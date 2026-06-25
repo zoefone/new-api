@@ -121,6 +121,38 @@ func SetTavilyKeyLastError(channelId, keyIndex int, message string) error {
 		}).Error
 }
 
+func UpdateTavilyKeyUsageSettings(channelId, keyIndex int, monthlyLimitCredits *int, projectId *string) error {
+	updates := map[string]interface{}{
+		"updated_at": common.GetTimestamp(),
+	}
+	if monthlyLimitCredits != nil {
+		updates["monthly_limit_credits"] = *monthlyLimitCredits
+	}
+	if projectId != nil {
+		updates["project_id"] = strings.TrimSpace(*projectId)
+	}
+	return DB.Model(&TavilyKeyUsage{}).
+		Where("channel_id = ? AND key_index = ?", channelId, keyIndex).
+		Updates(updates).Error
+}
+
+func SyncTavilyKeyUsageCredits(channelId, keyIndex int, usedCredits *int, monthlyLimitCredits *int) error {
+	updates := map[string]interface{}{
+		"last_sync_at": common.GetTimestamp(),
+		"last_error":   "",
+		"updated_at":   common.GetTimestamp(),
+	}
+	if usedCredits != nil {
+		updates["used_credits"] = *usedCredits
+	}
+	if monthlyLimitCredits != nil {
+		updates["monthly_limit_credits"] = *monthlyLimitCredits
+	}
+	return DB.Model(&TavilyKeyUsage{}).
+		Where("channel_id = ? AND key_index = ?", channelId, keyIndex).
+		Updates(updates).Error
+}
+
 func ResetTavilyKeyUsageCredits(channelId int, keyIndex *int) error {
 	query := DB.Model(&TavilyKeyUsage{}).Where("channel_id = ?", channelId)
 	if keyIndex != nil {

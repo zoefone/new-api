@@ -57,7 +57,13 @@ import {
 } from '@/lib/format'
 import { truncateText } from '@/lib/utils'
 
-import { getCodexUsage, getTavilyUsage, resetTavilyUsage } from '../api'
+import {
+  getCodexUsage,
+  getTavilyUsage,
+  resetTavilyUsage,
+  syncTavilyUsage,
+  updateTavilyUsageSettings,
+} from '../api'
 import { CHANNEL_STATUS_CONFIG, MODEL_FETCHABLE_TYPES } from '../constants'
 import {
   formatBalance,
@@ -309,6 +315,8 @@ function BalanceCell({ channel }: { channel: Channel }) {
   const [tavilyUsageResponse, setTavilyUsageResponse] =
     useState<TavilyUsageDialogData | null>(null)
   const [isTavilyResetting, setIsTavilyResetting] = useState(false)
+  const [isTavilySyncing, setIsTavilySyncing] = useState(false)
+  const [isTavilySaving, setIsTavilySaving] = useState(false)
   const currencyLabel = getCurrencyLabel()
   const tokenSuffix = currencyLabel === 'Tokens' ? ' Tokens' : ''
   const withSuffix = (value: string) =>
@@ -554,8 +562,57 @@ function BalanceCell({ channel }: { channel: Channel }) {
             setIsTavilyResetting(false)
           }
         }}
+        onSync={async (keyIndex) => {
+          if (isTavilySyncing) {
+            return
+          }
+          setIsTavilySyncing(true)
+          try {
+            const res = await syncTavilyUsage(channel.id, keyIndex)
+            setTavilyUsageResponse(res)
+            if (!res.success) {
+              throw new Error(res.message || t('Failed to sync usage'))
+            }
+            toast.success(t('Usage synced'))
+          } catch (error) {
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : t('Failed to sync usage')
+            )
+          } finally {
+            setIsTavilySyncing(false)
+          }
+        }}
+        onUpdate={async (keyIndex, params) => {
+          if (isTavilySaving) {
+            return
+          }
+          setIsTavilySaving(true)
+          try {
+            const res = await updateTavilyUsageSettings(channel.id, {
+              key_index: keyIndex,
+              ...params,
+            })
+            if (!res.success) {
+              throw new Error(res.message || t('Failed to save settings'))
+            }
+            setTavilyUsageResponse(res)
+            toast.success(t('Settings saved'))
+          } catch (error) {
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : t('Failed to save settings')
+            )
+          } finally {
+            setIsTavilySaving(false)
+          }
+        }}
         isRefreshing={isUpdating}
         isResetting={isTavilyResetting}
+        isSyncing={isTavilySyncing}
+        isSaving={isTavilySaving}
       />
     </TooltipProvider>
   )

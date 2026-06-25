@@ -76,9 +76,20 @@ export type TavilyUsageResponse = {
   success: boolean
   message?: string
   data?: TavilyKeyUsage[]
+  sync?: {
+    key_index: number
+    success: boolean
+    message?: string
+    upstream_status?: number
+    used_credits?: number
+    monthly_limit_credits?: number
+    upstream_data?: Record<string, unknown>
+  }[]
 }
 
 export type TavilyUsageResetResponse = TavilyUsageResponse
+export type TavilyUsageSyncResponse = TavilyUsageResponse
+export type TavilyUsageUpdateResponse = TavilyUsageResponse
 
 export type CodexCredentialRefreshResponse = {
   success: boolean
@@ -360,6 +371,34 @@ export async function resetTavilyUsage(
   const res = await api.post(
     `/api/channel/${channelId}/tavily/usage/reset`,
     keyIndex === undefined ? {} : { key_index: keyIndex },
+    channelActionConfig({ disableDuplicate: true })
+  )
+  return res.data
+}
+
+export async function syncTavilyUsage(
+  channelId: number,
+  keyIndex?: number
+): Promise<TavilyUsageSyncResponse> {
+  const res = await api.post(
+    `/api/channel/${channelId}/tavily/usage/sync`,
+    keyIndex === undefined ? {} : { key_index: keyIndex },
+    channelActionConfig({ disableDuplicate: true })
+  )
+  return res.data
+}
+
+export async function updateTavilyUsageSettings(
+  channelId: number,
+  params: {
+    key_index: number
+    monthly_limit_credits?: number
+    project_id?: string
+  }
+): Promise<TavilyUsageUpdateResponse> {
+  const res = await api.post(
+    `/api/channel/${channelId}/tavily/usage/update`,
+    params,
     channelActionConfig({ disableDuplicate: true })
   )
   return res.data

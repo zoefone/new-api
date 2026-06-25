@@ -53,7 +53,7 @@ Frontend:
 
 - `web/default/src/features/channels/components/dialogs/tavily-usage-dialog.tsx`: Tavily key usage dialog.
 - `web/default/src/features/channels/components/channels-columns.tsx`: Tavily usage entry in channel list.
-- `web/default/src/features/channels/api.ts`: Tavily usage/reset API client.
+- `web/default/src/features/channels/api.ts`: Tavily usage/reset/sync/settings API client.
 - `web/default/src/features/channels/constants.ts`: channel type 59.
 - `web/default/src/features/channels/lib/channel-type-config.ts`: Tavily channel form config.
 - `web/classic/src/constants/channel.constants.js`: classic UI channel type.
@@ -189,19 +189,55 @@ Extract:
 - Request pre-consumption is estimated from requested URL count, then settled
   after the upstream response based on `len(results)`.
 
+## Feature Checklist
+
+Implemented:
+
+- Tavily channel type `59`.
+- Public relay endpoints:
+  - `/tavily/search`
+  - `/tavily/extract`
+- Downstream auth through New API user tokens:
+  - `Authorization: Bearer <new-api-token>`
+  - `X-API-Key: <new-api-token>`
+- Upstream auth through the selected Tavily channel key.
+- New API group, token, channel, key-pool, log, quota, and pricing flows.
+- Request-based Tavily credit billing:
+  - search depth based credits
+  - extract success-result based settlement
+- Local per-key monthly usage tracking.
+- Per-key local reset.
+- Manual official Tavily `/usage` synchronization.
+- Editable per-key local monthly limit.
+- Editable per-key project label.
+- Default UI channel list entry and Tavily usage dialog.
+- Classic UI can create/edit Tavily channels.
+- GitHub Actions image build workflow for GHCR.
+
+Still intentionally left small or manual:
+
+- No scheduled background `/usage` sync yet.
+- Classic UI does not expose the Tavily usage dialog.
+- The usage parser supports Tavily's documented `key.usage` and `key.limit`
+  fields plus several common fallback names; unsupported future response shapes
+  may need a parser update.
+
 ## Key Pool Usage
 
 The local table `tavily_key_usages` tracks per-channel, per-key usage:
 
 - key index
 - key fingerprint and tail
+- project label
 - monthly limit, default `1000`
 - used credits
 - next local reset time
+- last official `/usage` sync time
 - last error
 
 Local usage is shown in the default frontend channel list by clicking `Key Usage`
-on a Tavily channel.
+on a Tavily channel. The dialog can refresh local state, synchronize official
+Tavily usage, save a project label/monthly local limit, or reset local counters.
 
 Admin APIs:
 
@@ -233,10 +269,73 @@ curl -X POST \
 Resetting here only resets New API's local counter. It does not reset Tavily's
 official account quota.
 
+Synchronize all keys with Tavily's official `/usage` endpoint:
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  https://your-domain.example.com/api/channel/<channel-id>/tavily/usage/sync \
+  -d '{}'
+```
+
+Synchronize one key:
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  https://your-domain.example.com/api/channel/<channel-id>/tavily/usage/sync \
+  -d '{"key_index":0}'
+```
+
+The sync call sends:
+
+```text
+GET <channel-base-url>/usage
+Authorization: Bearer <tavily-upstream-key>
+```
+
+The documented Tavily response shape is:
+
+```json
+{
+  "key": {
+    "usage": 150,
+    "limit": 1000,
+    "search_usage": 100,
+    "extract_usage": 25,
+    "crawl_usage": 15,
+    "map_usage": 7,
+    "research_usage": 3
+  },
+  "account": {
+    "current_plan": "Bootstrap",
+    "plan_usage": 500,
+    "plan_limit": 15000,
+    "paygo_usage": 25,
+    "paygo_limit": 100
+  }
+}
+```
+
+New API stores `key.usage` as `used_credits` and `key.limit` as
+`monthly_limit_credits`.
+
+Update one key's local settings:
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  https://your-domain.example.com/api/channel/<channel-id>/tavily/usage/update \
+  -d '{"key_index":0,"monthly_limit_credits":1000,"project_id":"project-a"}'
+```
+
 ## Current Limitations
 
-- Official Tavily `/usage` synchronization is not implemented yet.
-- Per-key monthly limit editing is not exposed in the UI yet; default is 1000.
+- Official Tavily `/usage` synchronization is manual. There is no scheduled
+  background sync worker yet.
 - Classic UI can create/edit Tavily channels, but the Tavily usage dialog is
   currently implemented only in the default UI.
 - On small 2C2G servers, do not run full frontend builds during production

@@ -16,7 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { RefreshCw, RotateCcw } from 'lucide-react'
+import { RefreshCw, RotateCcw, Save } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { StatusBadge } from '@/components/status-badge'
@@ -29,6 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -44,6 +46,8 @@ import { CHANNEL_STATUS_CONFIG } from '../../constants'
 
 export type TavilyUsageDialogData = TavilyUsageResponse
 
+const EMPTY_USAGE_ROWS: NonNullable<TavilyUsageResponse['data']> = []
+
 type TavilyUsageDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -51,8 +55,15 @@ type TavilyUsageDialogProps = {
   response: TavilyUsageDialogData | null
   onRefresh: () => Promise<void>
   onReset: (keyIndex?: number) => Promise<void>
+  onSync: (keyIndex?: number) => Promise<void>
+  onUpdate: (
+    keyIndex: number,
+    params: { monthly_limit_credits: number; project_id: string }
+  ) => Promise<void>
   isRefreshing?: boolean
   isResetting?: boolean
+  isSyncing?: boolean
+  isSaving?: boolean
 }
 
 function usagePercent(used: number, limit: number) {
@@ -69,12 +80,56 @@ export function TavilyUsageDialog({
   response,
   onRefresh,
   onReset,
+  onSync,
+  onUpdate,
   isRefreshing = false,
   isResetting = false,
+  isSyncing = false,
+  isSaving = false,
 }: TavilyUsageDialogProps) {
   const { t } = useTranslation()
-  const rows = response?.data ?? []
-  const isBusy = isRefreshing || isResetting
+  const rows = response?.data ?? EMPTY_USAGE_ROWS
+  const [drafts, setDrafts] = useState<
+    Record<number, { monthlyLimit: string; projectId: string }>
+  >({})
+  const isBusy = isRefreshing || isResetting || isSyncing || isSaving
+
+  useEffect(() => {
+    const nextDrafts: Record<number, { monthlyLimit: string; projectId: string }> = {}
+    for (const row of rows) {
+      nextDrafts[row.key_index] = {
+        monthlyLimit: String(row.monthly_limit_credits || ''),
+        projectId: row.project_id || '',
+      }
+    }
+    setDrafts(nextDrafts)
+  }, [rows])
+
+  const setDraft = (
+    keyIndex: number,
+    patch: Partial<{ monthlyLimit: string; projectId: string }>
+  ) => {
+    setDrafts((current) => ({
+      ...current,
+      [keyIndex]: {
+        monthlyLimit: current[keyIndex]?.monthlyLimit ?? '',
+        projectId: current[keyIndex]?.projectId ?? '',
+        ...patch,
+      },
+    }))
+  }
+
+  const saveDraft = async (keyIndex: number) => {
+    const draft = drafts[keyIndex]
+    const monthlyLimit = Number.parseInt(draft?.monthlyLimit || '', 10)
+    if (!Number.isFinite(monthlyLimit) || monthlyLimit <= 0) {
+      return
+    }
+    await onUpdate(keyIndex, {
+      monthly_limit_credits: monthlyLimit,
+      project_id: draft?.projectId || '',
+    })
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -89,9 +144,11 @@ export function TavilyUsageDialog({
             <TableHeader>
               <TableRow>
                 <TableHead>{t('Key')}</TableHead>
+                <TableHead>{t('Project')}</TableHead>
                 <TableHead>{t('Status')}</TableHead>
                 <TableHead>{t('Used')}</TableHead>
                 <TableHead>{t('Remaining')}</TableHead>
+                <TableHead>{t('Synced')}</TableHead>
                 <TableHead>{t('Reset At')}</TableHead>
                 <TableHead>{t('Error')}</TableHead>
                 <TableHead className='text-right'>{t('Actions')}</TableHead>
@@ -101,7 +158,7 @@ export function TavilyUsageDialog({
               {rows.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={9}
                     className='text-muted-foreground h-24 text-center'
                   >
                     {t('No data')}
@@ -131,17 +188,44 @@ export function TavilyUsageDialog({
                         </div>
                       </TableCell>
                       <TableCell>
+                        <Input
+                          value={drafts[item.key_index]?.projectId ?? ''}
+                          onChange={(event) =>
+                            setDraft(item.key_index, {
+                              projectId: event.target.value,
+                            })
+                          }
+                          className='h-8 min-w-32'
+                          placeholder={t('Project')}
+                          disabled={isBusy}
+                        />
+                      </TableCell>
+                      <TableCell>
                         <StatusBadge
                           label={t(status.label)}
                           variant={status.variant}
                           size='sm'
+                          copyable={false}
                         />
                       </TableCell>
                       <TableCell>
                         <div className='min-w-32 space-y-1'>
                           <div className='tabular-nums'>
                             {item.used_credits} /{' '}
-                            {item.monthly_limit_credits}
+                            <Input
+                              type='number'
+                              min={1}
+                              value={
+                                drafts[item.key_index]?.monthlyLimit ?? ''
+                              }
+                              onChange={(event) =>
+                                setDraft(item.key_index, {
+                                  monthlyLimit: event.target.value,
+                                })
+                              }
+                              className='ml-1 inline-flex h-7 w-20 px-2'
+                              disabled={isBusy}
+                            />
                           </div>
                           <div className='bg-muted h-1 overflow-hidden rounded-full'>
                             <div
@@ -155,21 +239,46 @@ export function TavilyUsageDialog({
                         {item.remaining_credits}
                       </TableCell>
                       <TableCell>
+                        {formatTimestampToDate(item.last_sync_at)}
+                      </TableCell>
+                      <TableCell>
                         {formatTimestampToDate(item.reset_at)}
                       </TableCell>
                       <TableCell className='max-w-48 truncate'>
                         {item.last_error || '-'}
                       </TableCell>
-                      <TableCell className='text-right'>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          disabled={isBusy}
-                          onClick={() => onReset(item.key_index)}
-                        >
-                          <RotateCcw />
-                          {t('Reset')}
-                        </Button>
+                      <TableCell>
+                        <div className='flex justify-end gap-1'>
+                          <Button
+                            variant='outline'
+                            size='icon-sm'
+                            disabled={isBusy}
+                            title={t('Save')}
+                            onClick={() => saveDraft(item.key_index)}
+                          >
+                            <Save />
+                          </Button>
+                          <Button
+                            variant='outline'
+                            size='icon-sm'
+                            disabled={isBusy}
+                            title={t('Sync')}
+                            onClick={() => onSync(item.key_index)}
+                          >
+                            <RefreshCw
+                              className={isSyncing ? 'animate-spin' : ''}
+                            />
+                          </Button>
+                          <Button
+                            variant='outline'
+                            size='icon-sm'
+                            disabled={isBusy}
+                            title={t('Reset')}
+                            onClick={() => onReset(item.key_index)}
+                          >
+                            <RotateCcw />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   )
@@ -183,6 +292,14 @@ export function TavilyUsageDialog({
           <Button variant='outline' disabled={isBusy} onClick={onRefresh}>
             <RefreshCw className={isRefreshing ? 'animate-spin' : ''} />
             {t('Refresh')}
+          </Button>
+          <Button
+            variant='outline'
+            disabled={isBusy || rows.length === 0}
+            onClick={() => onSync()}
+          >
+            <RefreshCw className={isSyncing ? 'animate-spin' : ''} />
+            {t('Sync All')}
           </Button>
           <Button disabled={isBusy || rows.length === 0} onClick={() => onReset()}>
             <RotateCcw />

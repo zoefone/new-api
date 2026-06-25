@@ -256,6 +256,8 @@ func SetApiRouter(router *gin.Engine) {
 			channelRoute.POST("/:id/codex/usage/reset", controller.ResetCodexChannelUsage)
 			channelRoute.GET("/:id/tavily/usage", controller.GetTavilyChannelUsage)
 			channelRoute.POST("/:id/tavily/usage/reset", controller.ResetTavilyChannelUsage)
+			channelRoute.POST("/:id/tavily/usage/sync", controller.SyncTavilyChannelUsage)
+			channelRoute.POST("/:id/tavily/usage/update", controller.UpdateTavilyChannelUsageSettings)
 			channelRoute.POST("/ollama/pull", controller.OllamaPullModel)
 			channelRoute.POST("/ollama/pull/stream", controller.OllamaPullModelStream)
 			channelRoute.DELETE("/ollama/delete", controller.OllamaDeleteModel)
