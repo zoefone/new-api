@@ -292,6 +292,12 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 		}
 		c.Set("platform", string(constant.TaskPlatformSuno))
 		c.Set("relay_mode", relayMode)
+	} else if strings.HasPrefix(c.Request.URL.Path, "/tavily/search") {
+		modelRequest.Model = "tavily-search"
+		c.Set("relay_mode", relayconstant.RelayModeTavilySearch)
+	} else if strings.HasPrefix(c.Request.URL.Path, "/tavily/extract") {
+		modelRequest.Model = "tavily-extract"
+		c.Set("relay_mode", relayconstant.RelayModeTavilyExtract)
 	} else if strings.Contains(c.Request.URL.Path, "/v1/videos/") && strings.HasSuffix(c.Request.URL.Path, "/remix") {
 		relayMode := relayconstant.RelayModeVideoSubmit
 		c.Set("relay_mode", relayMode)

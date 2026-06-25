@@ -57,7 +57,7 @@ import {
 } from '@/lib/format'
 import { truncateText } from '@/lib/utils'
 
-import { getCodexUsage } from '../api'
+import { getCodexUsage, getTavilyUsage, resetTavilyUsage } from '../api'
 import { CHANNEL_STATUS_CONFIG, MODEL_FETCHABLE_TYPES } from '../constants'
 import {
   formatBalance,
@@ -86,6 +86,10 @@ import {
   CodexUsageDialog,
   type CodexUsageDialogData,
 } from './dialogs/codex-usage-dialog'
+import {
+  TavilyUsageDialog,
+  type TavilyUsageDialogData,
+} from './dialogs/tavily-usage-dialog'
 import { NumericSpinnerInput } from './numeric-spinner-input'
 
 function parseIonetMeta(otherInfo: string | null | undefined): null | {
@@ -301,6 +305,10 @@ function BalanceCell({ channel }: { channel: Channel }) {
   const [codexUsageOpen, setCodexUsageOpen] = useState(false)
   const [codexUsageResponse, setCodexUsageResponse] =
     useState<CodexUsageDialogData | null>(null)
+  const [tavilyUsageOpen, setTavilyUsageOpen] = useState(false)
+  const [tavilyUsageResponse, setTavilyUsageResponse] =
+    useState<TavilyUsageDialogData | null>(null)
+  const [isTavilyResetting, setIsTavilyResetting] = useState(false)
   const currencyLabel = getCurrencyLabel()
   const tokenSuffix = currencyLabel === 'Tokens' ? ' Tokens' : ''
   const withSuffix = (value: string) =>
@@ -380,6 +388,23 @@ function BalanceCell({ channel }: { channel: Channel }) {
       }
       return
     }
+    if (channel.type === 59) {
+      try {
+        const res = await getTavilyUsage(channel.id)
+        if (!res.success) {
+          throw new Error(res.message || t('Failed to fetch usage'))
+        }
+        setTavilyUsageResponse(res)
+        setTavilyUsageOpen(true)
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : t('Failed to fetch usage')
+        )
+      } finally {
+        setIsUpdating(false)
+      }
+      return
+    }
 
     await handleUpdateChannelBalance(channel.id, queryClient)
     setIsUpdating(false)
@@ -389,15 +414,19 @@ function BalanceCell({ channel }: { channel: Channel }) {
     remainingBadgeLabel = t('Updating...')
   } else if (sensitiveVisible && channel.type === 57) {
     remainingBadgeLabel = t('Account Info')
+  } else if (sensitiveVisible && channel.type === 59) {
+    remainingBadgeLabel = t('Key Usage')
   }
   let remainingTooltipLabel = remainingLabel
   if (!sensitiveVisible) {
     remainingTooltipLabel = maskedRemainingLabel
   } else if (channel.type === 57) {
     remainingTooltipLabel = t('Click to view Codex usage')
+  } else if (channel.type === 59) {
+    remainingTooltipLabel = t('Click to view Tavily usage')
   }
   let remainingBadgeVariant: StatusBadgeProps['variant'] = variant
-  if (channel.type === 57) {
+  if (channel.type === 57 || channel.type === 59) {
     remainingBadgeVariant = 'info'
   } else if (isUpdating) {
     remainingBadgeVariant = 'neutral'
@@ -439,7 +468,9 @@ function BalanceCell({ channel }: { channel: Channel }) {
           />
           <TooltipContent>
             <p>{remainingTooltipLabel}</p>
-            {channel.type !== 57 && <p>{t('Click to update balance')}</p>}
+            {channel.type !== 57 && channel.type !== 59 && (
+              <p>{t('Click to update balance')}</p>
+            )}
           </TooltipContent>
         </Tooltip>
       </div>
@@ -474,6 +505,57 @@ function BalanceCell({ channel }: { channel: Channel }) {
           }
         }}
         isRefreshing={isUpdating}
+      />
+      <TavilyUsageDialog
+        open={tavilyUsageOpen}
+        onOpenChange={setTavilyUsageOpen}
+        channelName={sensitiveVisible ? channel.name : SENSITIVE_MASK}
+        response={tavilyUsageResponse}
+        onRefresh={async () => {
+          if (isUpdating) {
+            return
+          }
+          setIsUpdating(true)
+          try {
+            const res = await getTavilyUsage(channel.id)
+            if (!res.success) {
+              throw new Error(res.message || t('Failed to fetch usage'))
+            }
+            setTavilyUsageResponse(res)
+          } catch (error) {
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : t('Failed to fetch usage')
+            )
+          } finally {
+            setIsUpdating(false)
+          }
+        }}
+        onReset={async (keyIndex) => {
+          if (isTavilyResetting) {
+            return
+          }
+          setIsTavilyResetting(true)
+          try {
+            const res = await resetTavilyUsage(channel.id, keyIndex)
+            if (!res.success) {
+              throw new Error(res.message || t('Failed to reset usage'))
+            }
+            setTavilyUsageResponse(res)
+            toast.success(t('Usage reset'))
+          } catch (error) {
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : t('Failed to reset usage')
+            )
+          } finally {
+            setIsTavilyResetting(false)
+          }
+        }}
+        isRefreshing={isUpdating}
+        isResetting={isTavilyResetting}
       />
     </TooltipProvider>
   )

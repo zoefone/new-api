@@ -297,6 +297,8 @@ var defaultModelPrice = map[string]float64{
 	"veo-3.0-fast-generate-001":      0.15,
 	"veo-3.1-generate-preview":       0.4,
 	"veo-3.1-fast-generate-preview":  0.15,
+	"tavily-search":                  0.008,
+	"tavily-extract":                 0.008,
 }
 
 var defaultAudioRatio = map[string]float64{

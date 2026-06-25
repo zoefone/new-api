@@ -144,6 +144,17 @@ export const CHANNEL_TYPE_CONFIGS: Record<number, ChannelTypeConfig> = {
       models: 'Models exposed by this channel',
     },
   },
+  59: {
+    id: 59,
+    name: CHANNEL_TYPES[59],
+    icon: 'perplexity',
+    defaultBaseUrl: 'https://api.tavily.com',
+    hints: {
+      baseUrl: 'Default: https://api.tavily.com',
+      key: 'Tavily API keys, one per line in multi-key mode',
+      models: 'tavily-search,tavily-extract',
+    },
+  },
 }
 
 /**

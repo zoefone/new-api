@@ -372,6 +372,7 @@ export function getChannelIcon(channelType) {
     case 25: // Moonshot
       return <Moonshot size={iconSize} />;
     case 27: // Perplexity
+    case 59: // Tavily
       return <Perplexity.Color size={iconSize} />;
     case 20: // OpenRouter
       return <OpenRouter size={iconSize} />;

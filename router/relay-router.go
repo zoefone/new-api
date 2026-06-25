@@ -5,6 +5,7 @@ import (
 	"github.com/QuantumNous/new-api/controller"
 	"github.com/QuantumNous/new-api/middleware"
 	"github.com/QuantumNous/new-api/relay"
+	"github.com/QuantumNous/new-api/relay/tavily"
 	"github.com/QuantumNous/new-api/types"
 
 	"github.com/gin-gonic/gin"
@@ -184,6 +185,15 @@ func SetRelayRouter(router *gin.Engine) {
 		relaySunoRouter.POST("/submit/:action", controller.RelayTask)
 		relaySunoRouter.POST("/fetch", controller.RelayTaskFetch)
 		relaySunoRouter.GET("/fetch/:id", controller.RelayTaskFetch)
+	}
+
+	relayTavilyRouter := router.Group("/tavily")
+	relayTavilyRouter.Use(middleware.RouteTag("relay"))
+	relayTavilyRouter.Use(middleware.SystemPerformanceCheck())
+	relayTavilyRouter.Use(middleware.TavilyTokenAuthCompat(), middleware.TokenAuth(), middleware.Distribute())
+	{
+		relayTavilyRouter.POST("/search", tavily.RelaySearch)
+		relayTavilyRouter.POST("/extract", tavily.RelayExtract)
 	}
 
 	relayGeminiRouter := router.Group("/v1beta")

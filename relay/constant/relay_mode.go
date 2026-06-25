@@ -52,6 +52,9 @@ const (
 	RelayModeGemini
 
 	RelayModeResponsesCompact
+
+	RelayModeTavilySearch
+	RelayModeTavilyExtract
 )
 
 func Path2RelayMode(path string) int {
@@ -88,6 +91,10 @@ func Path2RelayMode(path string) int {
 		relayMode = RelayModeRealtime
 	} else if strings.HasPrefix(path, "/v1beta/models") || strings.HasPrefix(path, "/v1/models") {
 		relayMode = RelayModeGemini
+	} else if strings.HasPrefix(path, "/tavily/search") {
+		relayMode = RelayModeTavilySearch
+	} else if strings.HasPrefix(path, "/tavily/extract") {
+		relayMode = RelayModeTavilyExtract
 	} else if strings.HasPrefix(path, "/mj") {
 		relayMode = Path2RelayModeMidjourney(path)
 	}
