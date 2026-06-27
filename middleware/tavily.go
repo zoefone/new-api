@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func TavilyTokenAuthCompat() gin.HandlerFunc {
+func APIKeyTokenAuthCompat() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if strings.TrimSpace(c.GetHeader("Authorization")) == "" {
 			if key := strings.TrimSpace(c.GetHeader("X-API-Key")); key != "" {
@@ -15,4 +15,8 @@ func TavilyTokenAuthCompat() gin.HandlerFunc {
 		}
 		c.Next()
 	}
+}
+
+func TavilyTokenAuthCompat() gin.HandlerFunc {
+	return APIKeyTokenAuthCompat()
 }

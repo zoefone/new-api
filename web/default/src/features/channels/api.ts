@@ -58,7 +58,7 @@ export type CodexResetCreditsResponse = CodexUsageResponse
 
 export type CodexUsageResetResponse = CodexUsageResponse
 
-export type TavilyKeyUsage = {
+export type SearchKeyUsage = {
   key_index: number
   key_tail: string
   key_fingerprint: string
@@ -72,10 +72,10 @@ export type TavilyKeyUsage = {
   status: number
 }
 
-export type TavilyUsageResponse = {
+export type SearchUsageResponse = {
   success: boolean
   message?: string
-  data?: TavilyKeyUsage[]
+  data?: SearchKeyUsage[]
   sync?: {
     key_index: number
     success: boolean
@@ -87,9 +87,16 @@ export type TavilyUsageResponse = {
   }[]
 }
 
+export type TavilyKeyUsage = SearchKeyUsage
+export type TavilyUsageResponse = SearchUsageResponse
 export type TavilyUsageResetResponse = TavilyUsageResponse
 export type TavilyUsageSyncResponse = TavilyUsageResponse
 export type TavilyUsageUpdateResponse = TavilyUsageResponse
+export type ExaKeyUsage = SearchKeyUsage
+export type ExaUsageResponse = SearchUsageResponse
+export type ExaUsageResetResponse = ExaUsageResponse
+export type ExaUsageSyncResponse = ExaUsageResponse
+export type ExaUsageUpdateResponse = ExaUsageResponse
 
 export type CodexCredentialRefreshResponse = {
   success: boolean
@@ -398,6 +405,56 @@ export async function updateTavilyUsageSettings(
 ): Promise<TavilyUsageUpdateResponse> {
   const res = await api.post(
     `/api/channel/${channelId}/tavily/usage/update`,
+    params,
+    channelActionConfig({ disableDuplicate: true })
+  )
+  return res.data
+}
+
+export async function getExaUsage(
+  channelId: number
+): Promise<ExaUsageResponse> {
+  const res = await api.get(
+    `/api/channel/${channelId}/exa/usage`,
+    channelActionConfig({ disableDuplicate: true })
+  )
+  return res.data
+}
+
+export async function resetExaUsage(
+  channelId: number,
+  keyIndex?: number
+): Promise<ExaUsageResetResponse> {
+  const res = await api.post(
+    `/api/channel/${channelId}/exa/usage/reset`,
+    keyIndex === undefined ? {} : { key_index: keyIndex },
+    channelActionConfig({ disableDuplicate: true })
+  )
+  return res.data
+}
+
+export async function syncExaUsage(
+  channelId: number,
+  keyIndex?: number
+): Promise<ExaUsageSyncResponse> {
+  const res = await api.post(
+    `/api/channel/${channelId}/exa/usage/sync`,
+    keyIndex === undefined ? {} : { key_index: keyIndex },
+    channelActionConfig({ disableDuplicate: true })
+  )
+  return res.data
+}
+
+export async function updateExaUsageSettings(
+  channelId: number,
+  params: {
+    key_index: number
+    monthly_limit_credits?: number
+    project_id?: string
+  }
+): Promise<ExaUsageUpdateResponse> {
+  const res = await api.post(
+    `/api/channel/${channelId}/exa/usage/update`,
     params,
     channelActionConfig({ disableDuplicate: true })
   )

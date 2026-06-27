@@ -83,7 +83,8 @@ export function getChannelTypeIcon(type: number): string {
     // Other AI providers
     4: 'Ollama', // Ollama
     27: 'Perplexity', // Perplexity
-    59: 'Perplexity', // Tavily
+    59: 'Tavily', // Tavily
+    60: 'Exa', // Exa
     34: 'Cohere', // Cohere
     42: 'Mistral', // Mistral
     43: 'DeepSeek', // DeepSeek

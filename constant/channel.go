@@ -57,6 +57,7 @@ const (
 	ChannelTypeCodex          = 57
 	ChannelTypeAdvancedCustom = 58
 	ChannelTypeTavily         = 59
+	ChannelTypeExa            = 60
 	ChannelTypeDummy          // this one is only for count, do not add any channel after this
 
 )
@@ -122,6 +123,7 @@ var ChannelBaseURLs = []string{
 	"https://chatgpt.com",                       //57
 	"",                                          //58
 	"https://api.tavily.com",                    //59
+	"https://api.exa.ai",                        //60
 }
 
 var ChannelTypeNames = map[int]string{
@@ -181,6 +183,7 @@ var ChannelTypeNames = map[int]string{
 	ChannelTypeCodex:          "ChatGPT Subscription (Codex)",
 	ChannelTypeAdvancedCustom: "Advanced Custom",
 	ChannelTypeTavily:         "Tavily",
+	ChannelTypeExa:            "Exa",
 }
 
 func GetChannelTypeName(channelType int) string {

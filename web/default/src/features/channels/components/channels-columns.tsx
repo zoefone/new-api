@@ -59,9 +59,13 @@ import { truncateText } from '@/lib/utils'
 
 import {
   getCodexUsage,
+  getExaUsage,
   getTavilyUsage,
+  resetExaUsage,
   resetTavilyUsage,
+  syncExaUsage,
   syncTavilyUsage,
+  updateExaUsageSettings,
   updateTavilyUsageSettings,
 } from '../api'
 import { CHANNEL_STATUS_CONFIG, MODEL_FETCHABLE_TYPES } from '../constants'
@@ -340,6 +344,13 @@ function BalanceCell({ channel }: { channel: Channel }) {
   const remainingLabel = `${t('Remaining:')} ${remainingFull}`
   const maskedUsedLabel = `${t('Used:')} ${SENSITIVE_MASK}`
   const maskedRemainingLabel = `${t('Remaining:')} ${SENSITIVE_MASK}`
+  const isSearchUsageChannel = channel.type === 59 || channel.type === 60
+  const searchUsageTitle =
+    channel.type === 60 ? t('Exa Usage') : t('Tavily Usage')
+  const searchUsageUnitLabel =
+    channel.type === 60 ? t('Requests') : t('Credits')
+  const searchUsageProjectLabel =
+    channel.type === 60 ? t('API Key ID') : t('Project')
 
   // Tag row: only show cumulative used quota
   if (isTagRow) {
@@ -396,9 +407,12 @@ function BalanceCell({ channel }: { channel: Channel }) {
       }
       return
     }
-    if (channel.type === 59) {
+    if (isSearchUsageChannel) {
       try {
-        const res = await getTavilyUsage(channel.id)
+        const res =
+          channel.type === 60
+            ? await getExaUsage(channel.id)
+            : await getTavilyUsage(channel.id)
         if (!res.success) {
           throw new Error(res.message || t('Failed to fetch usage'))
         }
@@ -422,7 +436,7 @@ function BalanceCell({ channel }: { channel: Channel }) {
     remainingBadgeLabel = t('Updating...')
   } else if (sensitiveVisible && channel.type === 57) {
     remainingBadgeLabel = t('Account Info')
-  } else if (sensitiveVisible && channel.type === 59) {
+  } else if (sensitiveVisible && isSearchUsageChannel) {
     remainingBadgeLabel = t('Key Usage')
   }
   let remainingTooltipLabel = remainingLabel
@@ -430,11 +444,14 @@ function BalanceCell({ channel }: { channel: Channel }) {
     remainingTooltipLabel = maskedRemainingLabel
   } else if (channel.type === 57) {
     remainingTooltipLabel = t('Click to view Codex usage')
-  } else if (channel.type === 59) {
-    remainingTooltipLabel = t('Click to view Tavily usage')
+  } else if (isSearchUsageChannel) {
+    remainingTooltipLabel =
+      channel.type === 60
+        ? t('Click to view Exa usage')
+        : t('Click to view Tavily usage')
   }
   let remainingBadgeVariant: StatusBadgeProps['variant'] = variant
-  if (channel.type === 57 || channel.type === 59) {
+  if (channel.type === 57 || isSearchUsageChannel) {
     remainingBadgeVariant = 'info'
   } else if (isUpdating) {
     remainingBadgeVariant = 'neutral'
@@ -476,7 +493,7 @@ function BalanceCell({ channel }: { channel: Channel }) {
           />
           <TooltipContent>
             <p>{remainingTooltipLabel}</p>
-            {channel.type !== 57 && channel.type !== 59 && (
+            {channel.type !== 57 && !isSearchUsageChannel && (
               <p>{t('Click to update balance')}</p>
             )}
           </TooltipContent>
@@ -519,13 +536,19 @@ function BalanceCell({ channel }: { channel: Channel }) {
         onOpenChange={setTavilyUsageOpen}
         channelName={sensitiveVisible ? channel.name : SENSITIVE_MASK}
         response={tavilyUsageResponse}
+        title={searchUsageTitle}
+        unitLabel={searchUsageUnitLabel}
+        projectLabel={searchUsageProjectLabel}
         onRefresh={async () => {
           if (isUpdating) {
             return
           }
           setIsUpdating(true)
           try {
-            const res = await getTavilyUsage(channel.id)
+            const res =
+              channel.type === 60
+                ? await getExaUsage(channel.id)
+                : await getTavilyUsage(channel.id)
             if (!res.success) {
               throw new Error(res.message || t('Failed to fetch usage'))
             }
@@ -546,7 +569,10 @@ function BalanceCell({ channel }: { channel: Channel }) {
           }
           setIsTavilyResetting(true)
           try {
-            const res = await resetTavilyUsage(channel.id, keyIndex)
+            const res =
+              channel.type === 60
+                ? await resetExaUsage(channel.id, keyIndex)
+                : await resetTavilyUsage(channel.id, keyIndex)
             if (!res.success) {
               throw new Error(res.message || t('Failed to reset usage'))
             }
@@ -568,7 +594,10 @@ function BalanceCell({ channel }: { channel: Channel }) {
           }
           setIsTavilySyncing(true)
           try {
-            const res = await syncTavilyUsage(channel.id, keyIndex)
+            const res =
+              channel.type === 60
+                ? await syncExaUsage(channel.id, keyIndex)
+                : await syncTavilyUsage(channel.id, keyIndex)
             setTavilyUsageResponse(res)
             if (!res.success) {
               throw new Error(res.message || t('Failed to sync usage'))
@@ -590,10 +619,16 @@ function BalanceCell({ channel }: { channel: Channel }) {
           }
           setIsTavilySaving(true)
           try {
-            const res = await updateTavilyUsageSettings(channel.id, {
-              key_index: keyIndex,
-              ...params,
-            })
+            const res =
+              channel.type === 60
+                ? await updateExaUsageSettings(channel.id, {
+                    key_index: keyIndex,
+                    ...params,
+                  })
+                : await updateTavilyUsageSettings(channel.id, {
+                    key_index: keyIndex,
+                    ...params,
+                  })
             if (!res.success) {
               throw new Error(res.message || t('Failed to save settings'))
             }

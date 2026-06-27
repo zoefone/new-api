@@ -36,6 +36,7 @@ var defaultVendorRules = map[string]string{
 	"jimeng":   "即梦",
 	"vidu":     "Vidu",
 	"tavily":   "Tavily",
+	"exa":      "Exa",
 }
 
 // 供应商默认图标映射
@@ -63,7 +64,8 @@ var defaultVendorIcons = map[string]string{
 	"快手":         "Kling.Color",
 	"即梦":         "Jimeng.Color",
 	"Vidu":       "Vidu",
-	"Tavily":     "Perplexity.Color",
+	"Tavily":     "Tavily.Color",
+	"Exa":        "Exa.Color",
 	"微软":         "AzureAI",
 	"Microsoft":  "AzureAI",
 	"Azure":      "AzureAI",

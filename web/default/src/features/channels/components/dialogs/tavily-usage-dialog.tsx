@@ -60,6 +60,9 @@ type TavilyUsageDialogProps = {
     keyIndex: number,
     params: { monthly_limit_credits: number; project_id: string }
   ) => Promise<void>
+  title?: string
+  unitLabel?: string
+  projectLabel?: string
   isRefreshing?: boolean
   isResetting?: boolean
   isSyncing?: boolean
@@ -82,6 +85,9 @@ export function TavilyUsageDialog({
   onReset,
   onSync,
   onUpdate,
+  title,
+  unitLabel,
+  projectLabel,
   isRefreshing = false,
   isResetting = false,
   isSyncing = false,
@@ -89,6 +95,9 @@ export function TavilyUsageDialog({
 }: TavilyUsageDialogProps) {
   const { t } = useTranslation()
   const rows = response?.data ?? EMPTY_USAGE_ROWS
+  const dialogTitle = title ?? t('Tavily Usage')
+  const usageUnitLabel = unitLabel ?? t('Credits')
+  const projectColumnLabel = projectLabel ?? t('Project')
   const [drafts, setDrafts] = useState<
     Record<number, { monthlyLimit: string; projectId: string }>
   >({})
@@ -135,7 +144,7 @@ export function TavilyUsageDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='sm:max-w-4xl'>
         <DialogHeader>
-          <DialogTitle>{t('Tavily Usage')}</DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
           <DialogDescription>{channelName}</DialogDescription>
         </DialogHeader>
 
@@ -144,10 +153,14 @@ export function TavilyUsageDialog({
             <TableHeader>
               <TableRow>
                 <TableHead>{t('Key')}</TableHead>
-                <TableHead>{t('Project')}</TableHead>
+                <TableHead>{projectColumnLabel}</TableHead>
                 <TableHead>{t('Status')}</TableHead>
-                <TableHead>{t('Used')}</TableHead>
-                <TableHead>{t('Remaining')}</TableHead>
+                <TableHead>
+                  {t('Used')} ({usageUnitLabel})
+                </TableHead>
+                <TableHead>
+                  {t('Remaining')} ({usageUnitLabel})
+                </TableHead>
                 <TableHead>{t('Synced')}</TableHead>
                 <TableHead>{t('Reset At')}</TableHead>
                 <TableHead>{t('Error')}</TableHead>

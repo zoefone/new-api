@@ -61,6 +61,8 @@ import {
   Jimeng,
   Perplexity,
   Replicate,
+  Tavily,
+  Exa,
 } from '@lobehub/icons';
 
 import {
@@ -372,8 +374,11 @@ export function getChannelIcon(channelType) {
     case 25: // Moonshot
       return <Moonshot size={iconSize} />;
     case 27: // Perplexity
-    case 59: // Tavily
       return <Perplexity.Color size={iconSize} />;
+    case 59: // Tavily
+      return <Tavily.Color size={iconSize} />;
+    case 60: // Exa
+      return <Exa.Color size={iconSize} />;
     case 20: // OpenRouter
       return <OpenRouter size={iconSize} />;
     case 19: // 360 智脑

@@ -55,6 +55,8 @@ const (
 
 	RelayModeTavilySearch
 	RelayModeTavilyExtract
+	RelayModeExaSearch
+	RelayModeExaContents
 )
 
 func Path2RelayMode(path string) int {
@@ -95,6 +97,10 @@ func Path2RelayMode(path string) int {
 		relayMode = RelayModeTavilySearch
 	} else if strings.HasPrefix(path, "/tavily/extract") {
 		relayMode = RelayModeTavilyExtract
+	} else if strings.HasPrefix(path, "/exa/search") {
+		relayMode = RelayModeExaSearch
+	} else if strings.HasPrefix(path, "/exa/contents") {
+		relayMode = RelayModeExaContents
 	} else if strings.HasPrefix(path, "/mj") {
 		relayMode = Path2RelayModeMidjourney(path)
 	}

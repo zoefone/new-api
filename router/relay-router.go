@@ -5,6 +5,7 @@ import (
 	"github.com/QuantumNous/new-api/controller"
 	"github.com/QuantumNous/new-api/middleware"
 	"github.com/QuantumNous/new-api/relay"
+	"github.com/QuantumNous/new-api/relay/exa"
 	"github.com/QuantumNous/new-api/relay/tavily"
 	"github.com/QuantumNous/new-api/types"
 
@@ -190,10 +191,19 @@ func SetRelayRouter(router *gin.Engine) {
 	relayTavilyRouter := router.Group("/tavily")
 	relayTavilyRouter.Use(middleware.RouteTag("relay"))
 	relayTavilyRouter.Use(middleware.SystemPerformanceCheck())
-	relayTavilyRouter.Use(middleware.TavilyTokenAuthCompat(), middleware.TokenAuth(), middleware.Distribute())
+	relayTavilyRouter.Use(middleware.APIKeyTokenAuthCompat(), middleware.TokenAuth(), middleware.Distribute())
 	{
 		relayTavilyRouter.POST("/search", tavily.RelaySearch)
 		relayTavilyRouter.POST("/extract", tavily.RelayExtract)
+	}
+
+	relayExaRouter := router.Group("/exa")
+	relayExaRouter.Use(middleware.RouteTag("relay"))
+	relayExaRouter.Use(middleware.SystemPerformanceCheck())
+	relayExaRouter.Use(middleware.APIKeyTokenAuthCompat(), middleware.TokenAuth(), middleware.Distribute())
+	{
+		relayExaRouter.POST("/search", exa.RelaySearch)
+		relayExaRouter.POST("/contents", exa.RelayContents)
 	}
 
 	relayGeminiRouter := router.Group("/v1beta")

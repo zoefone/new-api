@@ -147,12 +147,24 @@ export const CHANNEL_TYPE_CONFIGS: Record<number, ChannelTypeConfig> = {
   59: {
     id: 59,
     name: CHANNEL_TYPES[59],
-    icon: 'perplexity',
+    icon: 'tavily',
     defaultBaseUrl: 'https://api.tavily.com',
     hints: {
       baseUrl: 'Default: https://api.tavily.com',
       key: 'Tavily API keys, one per line in multi-key mode',
       models: 'tavily-search,tavily-extract',
+    },
+  },
+  60: {
+    id: 60,
+    name: CHANNEL_TYPES[60],
+    icon: 'exa',
+    defaultBaseUrl: 'https://api.exa.ai',
+    hints: {
+      baseUrl: 'Default: https://api.exa.ai',
+      key: 'Exa API keys, one per line in multi-key mode',
+      models: 'exa-search,exa-contents',
+      other: 'Usage sync needs the Exa API Key ID in the usage dialog',
     },
   },
 }

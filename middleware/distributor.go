@@ -298,6 +298,12 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 	} else if strings.HasPrefix(c.Request.URL.Path, "/tavily/extract") {
 		modelRequest.Model = "tavily-extract"
 		c.Set("relay_mode", relayconstant.RelayModeTavilyExtract)
+	} else if strings.HasPrefix(c.Request.URL.Path, "/exa/search") {
+		modelRequest.Model = "exa-search"
+		c.Set("relay_mode", relayconstant.RelayModeExaSearch)
+	} else if strings.HasPrefix(c.Request.URL.Path, "/exa/contents") {
+		modelRequest.Model = "exa-contents"
+		c.Set("relay_mode", relayconstant.RelayModeExaContents)
 	} else if strings.Contains(c.Request.URL.Path, "/v1/videos/") && strings.HasSuffix(c.Request.URL.Path, "/remix") {
 		relayMode := relayconstant.RelayModeVideoSubmit
 		c.Set("relay_mode", relayMode)

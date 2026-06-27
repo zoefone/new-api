@@ -3,6 +3,10 @@
 This fork adds a Tavily search relay channel to New API. It reuses New API user
 tokens, channel key pools, quota billing, logs, groups, and admin management.
 
+The same fork also includes an Exa relay module. See `docs/exa-relay.md` for
+the Exa channel type, `/exa/search`, `/exa/contents`, and Exa key-pool usage
+sync details.
+
 ## Do I need to upload this to GitHub?
 
 Not strictly. The code already exists in this local repository:
@@ -348,6 +352,7 @@ Low-load backend checks used during development:
 ```bash
 cd /root/new-api
 GOMAXPROCS=1 go test -p 1 -mod=readonly ./relay/tavily ./relay/channel/tavily ./controller ./model ./middleware ./router
+GOMAXPROCS=1 go test -p 1 -mod=readonly ./relay/exa ./relay/channel/exa ./controller ./model ./middleware ./router
 git diff --check
 ```
 
