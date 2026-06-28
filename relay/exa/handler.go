@@ -21,6 +21,7 @@ import (
 	"github.com/QuantumNous/new-api/types"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 const (
@@ -97,10 +98,11 @@ func relay(c *gin.Context, endpoint string) {
 		}
 	}
 
-	statusCode, contentType, responseBody, err := doUpstreamRequest(c, info, endpoint, rawBody)
+	statusCode, contentType, responseBody, err := doUpstreamRequest(c, info, endpoint, rawBody, selection.Index)
 	if err != nil {
 		refund(c, info)
 		_ = model.SetExaKeyLastError(channelId, selection.Index, err.Error())
+		setSearchPoolLastError(channelId, selection.Index, err.Error())
 		c.JSON(http.StatusBadGateway, gin.H{"error": gin.H{"message": "upstream error: do request failed", "type": "upstream_error"}})
 		return
 	}
@@ -122,6 +124,7 @@ func relay(c *gin.Context, endpoint string) {
 		}
 	}
 	_ = model.AddExaKeyUsedCredits(channelId, selection.Index, actualRequests)
+	setSearchPoolLastError(channelId, selection.Index, "")
 	recordConsumeLog(c, info, priceData, meta, actualRequests, actualQuota, actualDetail)
 	c.Data(statusCode, contentType, responseBody)
 }
@@ -217,10 +220,21 @@ func selectAvailableKey(c *gin.Context, channelId int) (*keySelection, error) {
 	return nil, errors.New("no Exa key with remaining requests")
 }
 
-func doUpstreamRequest(c *gin.Context, info *relaycommon.RelayInfo, endpoint string, body []byte) (int, string, []byte, error) {
+func doUpstreamRequest(c *gin.Context, info *relaycommon.RelayInfo, endpoint string, body []byte, keyIndex int) (int, string, []byte, error) {
 	baseURL := strings.TrimRight(info.ChannelBaseUrl, "/")
 	if baseURL == "" {
 		baseURL = strings.TrimRight(constant.ChannelBaseURLs[constant.ChannelTypeExa], "/")
+	}
+	proxy := info.ChannelSetting.Proxy
+	if account, err := model.GetSearchPoolAccountByChannelKeyIndex(model.SearchPoolProviderExa, info.ChannelId, keyIndex); err == nil {
+		if account.BaseURL != "" {
+			baseURL = strings.TrimRight(account.BaseURL, "/")
+		}
+		if strings.TrimSpace(account.Proxy) != "" {
+			proxy = strings.TrimSpace(account.Proxy)
+		}
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		logger.LogWarn(c, fmt.Sprintf("search pool Exa account lookup skipped: channel=%d key_index=%d error=%v", info.ChannelId, keyIndex, err))
 	}
 	targetURL := relaycommon.GetFullRequestURL(baseURL, "/"+endpoint, info.ChannelType)
 	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodPost, targetURL, bytes.NewReader(body))
@@ -233,7 +247,7 @@ func doUpstreamRequest(c *gin.Context, info *relaycommon.RelayInfo, endpoint str
 		req.Header.Set("Accept", accept)
 	}
 
-	client, err := service.GetHttpClientWithProxy(info.ChannelSetting.Proxy)
+	client, err := service.GetHttpClientWithProxy(proxy)
 	if err != nil {
 		return 0, "", nil, err
 	}
@@ -269,10 +283,19 @@ func refund(c *gin.Context, info *relaycommon.RelayInfo) {
 func handleUpstreamKeyError(channelId int, key string, keyIndex int, statusCode int, body []byte) {
 	reason := fmt.Sprintf("Exa upstream returned HTTP %d", statusCode)
 	_ = model.SetExaKeyLastError(channelId, keyIndex, string(body))
+	setSearchPoolLastError(channelId, keyIndex, string(body))
 	switch statusCode {
 	case http.StatusPaymentRequired, http.StatusUnauthorized, http.StatusForbidden, http.StatusTooManyRequests:
 		model.UpdateChannelStatus(channelId, key, common.ChannelStatusAutoDisabled, reason)
 	}
+}
+
+func setSearchPoolLastError(channelId int, keyIndex int, message string) {
+	account, err := model.GetSearchPoolAccountByChannelKeyIndex(model.SearchPoolProviderExa, channelId, keyIndex)
+	if err != nil {
+		return
+	}
+	_ = model.SetSearchPoolAccountLastError(account.Id, message)
 }
 
 func recordConsumeLog(c *gin.Context, info *relaycommon.RelayInfo, priceData types.PriceData, estimated requestMeta, actualRequests int, actualQuota int, actualDetail map[string]any) {

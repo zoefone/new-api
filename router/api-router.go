@@ -225,6 +225,17 @@ func SetApiRouter(router *gin.Engine) {
 			ratioSyncRoute.GET("/channels", controller.GetSyncableChannels)
 			ratioSyncRoute.POST("/fetch", controller.FetchUpstreamRatios)
 		}
+		searchPoolRoute := apiRouter.Group("/search_pool")
+		searchPoolRoute.Use(middleware.AdminAuth())
+		{
+			searchPoolRoute.GET("/summary", controller.GetSearchPoolSummary)
+			searchPoolRoute.GET("/accounts", controller.ListSearchPoolAccounts)
+			searchPoolRoute.POST("/accounts/import", controller.ImportSearchPoolAccounts)
+			searchPoolRoute.PUT("/accounts/:id", controller.UpdateSearchPoolAccount)
+			searchPoolRoute.DELETE("/accounts/:id", controller.DeleteSearchPoolAccount)
+			searchPoolRoute.POST("/apply", controller.ApplySearchPoolToNewAPI)
+			searchPoolRoute.POST("/sync", controller.SyncSearchPoolUsage)
+		}
 		channelRoute := apiRouter.Group("/channel")
 		channelRoute.Use(middleware.AdminAuth())
 		{

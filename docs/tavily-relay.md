@@ -117,6 +117,9 @@ The Go root package embeds `web/default/dist` and `web/classic/dist`, so both
 frontend builds must exist before `go build` or `go test ./...` can compile the
 root package.
 
+
+The aggregated Tavily/Exa key-pool manager is documented in `docs/search-pool.md`.
+
 ## Admin Setup
 
 1. Log in as admin.

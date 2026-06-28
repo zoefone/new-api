@@ -20,6 +20,7 @@ import {
   Activity,
   Box,
   CreditCard,
+  Database,
   FileText,
   FlaskConical,
   Key,
@@ -36,7 +37,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ROLE } from '@/lib/roles'
-import { type SidebarData } from '@/components/layout/types'
+import type { SidebarData } from '@/components/layout/types'
 
 /**
  * Root navigation groups for the application sidebar.
@@ -122,6 +123,11 @@ export function useSidebarData(): SidebarData {
             title: t('Channels'),
             url: '/channels',
             icon: Radio,
+          },
+          {
+            title: t('Search Pool'),
+            url: '/search-pool',
+            icon: Database,
           },
           {
             title: t('Models'),

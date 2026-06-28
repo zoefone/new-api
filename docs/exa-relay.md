@@ -4,6 +4,9 @@ This fork adds an Exa search relay channel alongside the Tavily module. It uses
 New API's normal token authentication, channel key pools, groups, quota billing,
 consume logs, and admin channel management.
 
+
+The aggregated Tavily/Exa key-pool manager is documented in `docs/search-pool.md`.
+
 ## Channel Setup
 
 1. Add a channel with type `Exa` (`60`).

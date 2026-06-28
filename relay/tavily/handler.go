@@ -20,6 +20,7 @@ import (
 	"github.com/QuantumNous/new-api/types"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 const (
@@ -96,10 +97,11 @@ func relay(c *gin.Context, endpoint string) {
 		}
 	}
 
-	statusCode, contentType, responseBody, err := doUpstreamRequest(c, info, endpoint, rawBody)
+	statusCode, contentType, responseBody, err := doUpstreamRequest(c, info, endpoint, rawBody, selection.Index)
 	if err != nil {
 		refund(c, info)
 		_ = model.SetTavilyKeyLastError(channelId, selection.Index, err.Error())
+		setSearchPoolLastError(channelId, selection.Index, err.Error())
 		c.JSON(http.StatusBadGateway, gin.H{"error": gin.H{"message": "upstream error: do request failed", "type": "upstream_error"}})
 		return
 	}
@@ -115,6 +117,7 @@ func relay(c *gin.Context, endpoint string) {
 	if err != nil {
 		refund(c, info)
 		_ = model.SetTavilyKeyLastError(channelId, selection.Index, err.Error())
+		setSearchPoolLastError(channelId, selection.Index, err.Error())
 		c.JSON(http.StatusBadGateway, gin.H{"error": gin.H{"message": "upstream response usage could not be parsed", "type": "upstream_error"}})
 		return
 	}
@@ -128,6 +131,7 @@ func relay(c *gin.Context, endpoint string) {
 		}
 	}
 	_ = model.AddTavilyKeyUsedCredits(channelId, selection.Index, actualCredits)
+	setSearchPoolLastError(channelId, selection.Index, "")
 	recordConsumeLog(c, info, priceData, meta, actualCredits, actualQuota, actualDetail)
 	c.Data(statusCode, contentType, responseBody)
 }
@@ -312,10 +316,26 @@ func selectAvailableKey(c *gin.Context, channelId int) (*keySelection, error) {
 	return nil, errors.New("no Tavily key with remaining credits")
 }
 
-func doUpstreamRequest(c *gin.Context, info *relaycommon.RelayInfo, endpoint string, body []byte) (int, string, []byte, error) {
+func doUpstreamRequest(c *gin.Context, info *relaycommon.RelayInfo, endpoint string, body []byte, keyIndex int) (int, string, []byte, error) {
 	baseURL := strings.TrimRight(info.ChannelBaseUrl, "/")
 	if baseURL == "" {
 		baseURL = strings.TrimRight(constant.ChannelBaseURLs[constant.ChannelTypeTavily], "/")
+	}
+	proxy := info.ChannelSetting.Proxy
+	projectID := ""
+	if account, err := model.GetSearchPoolAccountByChannelKeyIndex(model.SearchPoolProviderTavily, info.ChannelId, keyIndex); err == nil {
+		if account.BaseURL != "" {
+			baseURL = strings.TrimRight(account.BaseURL, "/")
+		}
+		if strings.TrimSpace(account.Proxy) != "" {
+			proxy = strings.TrimSpace(account.Proxy)
+		}
+		projectID = strings.TrimSpace(account.ProjectId)
+		if projectID == "" {
+			projectID = strings.TrimSpace(account.ApiKeyId)
+		}
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		logger.LogWarn(c, fmt.Sprintf("search pool Tavily account lookup skipped: channel=%d key_index=%d error=%v", info.ChannelId, keyIndex, err))
 	}
 	targetURL := relaycommon.GetFullRequestURL(baseURL, "/"+endpoint, info.ChannelType)
 	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodPost, targetURL, bytes.NewReader(body))
@@ -324,11 +344,14 @@ func doUpstreamRequest(c *gin.Context, info *relaycommon.RelayInfo, endpoint str
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+info.ApiKey)
+	if projectID != "" {
+		req.Header.Set("X-Project-ID", projectID)
+	}
 	if projectID := strings.TrimSpace(c.GetHeader("X-Project-ID")); projectID != "" {
 		req.Header.Set("X-Project-ID", projectID)
 	}
 
-	client, err := service.GetHttpClientWithProxy(info.ChannelSetting.Proxy)
+	client, err := service.GetHttpClientWithProxy(proxy)
 	if err != nil {
 		return 0, "", nil, err
 	}
@@ -364,10 +387,19 @@ func refund(c *gin.Context, info *relaycommon.RelayInfo) {
 func handleUpstreamKeyError(channelId int, key string, keyIndex int, statusCode int, body []byte) {
 	reason := fmt.Sprintf("Tavily upstream returned HTTP %d", statusCode)
 	_ = model.SetTavilyKeyLastError(channelId, keyIndex, string(body))
+	setSearchPoolLastError(channelId, keyIndex, string(body))
 	switch statusCode {
 	case http.StatusPaymentRequired, http.StatusUnauthorized, http.StatusForbidden, http.StatusTooManyRequests:
 		model.UpdateChannelStatus(channelId, key, common.ChannelStatusAutoDisabled, reason)
 	}
+}
+
+func setSearchPoolLastError(channelId int, keyIndex int, message string) {
+	account, err := model.GetSearchPoolAccountByChannelKeyIndex(model.SearchPoolProviderTavily, channelId, keyIndex)
+	if err != nil {
+		return
+	}
+	_ = model.SetSearchPoolAccountLastError(account.Id, message)
 }
 
 func recordConsumeLog(c *gin.Context, info *relaycommon.RelayInfo, priceData types.PriceData, estimated requestMeta, actualCredits int, actualQuota int, actualDetail map[string]any) {
